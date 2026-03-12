@@ -1,0 +1,161 @@
+{
+  "functions": [
+    {
+      "name": "memory_store",
+      "description": "Store information in long-term memory for later recall. Use this when the user shares facts, preferences, decisions, or any information worth remembering.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Unique identifier for this memory. Use snake_case format (e.g., 'user_preference_theme', 'project_alpha_deadline')"
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable description of what this memory contains"
+          },
+          "data": {
+            "type": "object",
+            "description": "Optional structured data to store alongside the description",
+            "additionalProperties": true
+          }
+        },
+        "required": ["key", "description"]
+      }
+    },
+    {
+      "name": "memory_recall",
+      "description": "Search memory for relevant information. Use this to find context from previous conversations or stored facts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "What to search for in memory. Can be keywords, phrases, or questions."
+          },
+          "max_results": {
+            "type": "integer",
+            "description": "Maximum number of results to return",
+            "default": 10,
+            "minimum": 1,
+            "maximum": 50
+          },
+          "max_depth": {
+            "type": "integer",
+            "description": "How many relationship links to follow when finding related information",
+            "default": 2,
+            "minimum": 0,
+            "maximum": 5
+          }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "memory_update",
+      "description": "Update existing information in memory. Use when information has changed or needs correction.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "The key of the memory to update"
+          },
+          "description": {
+            "type": "string",
+            "description": "New description (replaces the old one)"
+          },
+          "data": {
+            "type": "object",
+            "description": "New structured data (merged with existing data)",
+            "additionalProperties": true
+          }
+        },
+        "required": ["key"]
+      }
+    },
+    {
+      "name": "memory_forget",
+      "description": "Remove information from memory. Use when the user asks to delete something or information is no longer relevant.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "The key of the memory to delete"
+          },
+          "cascade": {
+            "type": "boolean",
+            "description": "If true, also remove relationships connected to this memory",
+            "default": true
+          }
+        },
+        "required": ["key"]
+      }
+    },
+    {
+      "name": "memory_get_overview",
+      "description": "Get a summary of what's currently stored in memory. Use at the start of conversations to understand available context.",
+      "parameters": {
+        "type": "object",
+        "properties": {}
+      }
+    },
+    {
+      "name": "memory_find_related",
+      "description": "Find information related to a specific memory. Use to explore connections between stored information.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "The key of the memory to find relationships for"
+          },
+          "max_depth": {
+            "type": "integer",
+            "description": "How many relationship links to follow",
+            "default": 3,
+            "minimum": 1,
+            "maximum": 5
+          }
+        },
+        "required": ["key"]
+      }
+    },
+    {
+      "name": "memory_add_relationships",
+      "description": "Create connections between memories. Use to link related information together.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "edges": {
+            "type": "array",
+            "description": "List of relationships to create",
+            "items": {
+              "type": "object",
+              "properties": {
+                "nodes": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "minItems": 2,
+                  "maxItems": 2,
+                  "description": "The two memory keys to connect"
+                },
+                "relationship": {
+                  "type": "string",
+                  "description": "The type of relationship (e.g., 'related_to', 'part_of', 'depends_on')"
+                },
+                "data": {
+                  "type": "object",
+                  "description": "Optional metadata about the relationship"
+                }
+              },
+              "required": ["nodes", "relationship"]
+            }
+          }
+        },
+        "required": ["edges"]
+      }
+    }
+  ]
+}

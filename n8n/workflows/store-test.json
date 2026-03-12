@@ -1,0 +1,94 @@
+{
+  "name": "HyperMemory - Store Test",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hypermemory.io/v1/mcp/sse",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"jsonrpc\": \"2.0\",\n  \"id\": {{ $now.toMillis() }},\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"memory_store\",\n    \"arguments\": {\n      \"key\": \"test_from_n8n\",\n      \"description\": \"This is a test memory created from n8n at {{ $now.toISO() }}\"\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "store",
+      "name": "Store Memory",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [450, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "HyperMemory API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hypermemory.io/v1/mcp/sse",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"jsonrpc\": \"2.0\",\n  \"id\": {{ $now.toMillis() }},\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"memory_recall\",\n    \"arguments\": {\n      \"query\": \"test from n8n\"\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "recall",
+      "name": "Recall Memory",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [650, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "YOUR_CREDENTIAL_ID",
+          "name": "HyperMemory API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Store Memory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Memory": {
+      "main": [
+        [
+          {
+            "node": "Recall Memory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "pinData": {},
+  "versionId": "1",
+  "triggerCount": 0,
+  "tags": []
+}
