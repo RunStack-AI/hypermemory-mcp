@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="hypermemory_mcp.svg" alt="HyperMemory MCP" width="250">
+</p>
+
 # HyperMemory MCP Integration
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
