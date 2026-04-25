@@ -1,374 +1,233 @@
 <p align="center">
-  <img src="hypermemory_mcp.svg" alt="HyperMemory MCP" width="250">
+  <img src="hypermemory_mcp.svg" alt="HyperMemory MCP" width="400" />
+</p>
+
+<p align="center">
+  <a href="https://hypermemory.io">Website</a> &middot;
+  <a href="https://app.hypermemory.io">Dashboard</a> &middot;
+  <a href="https://github.com/RunStack-AI/hypermemory-mcp/issues">Issues</a>
 </p>
 
 # HyperMemory MCP Integration
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![MCP Compatible](https://img.shields.io/badge/MCP-2024--11--05-green.svg)](https://modelcontextprotocol.io)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![MCP Compatible](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io)
 
-Give your AI assistant **persistent memory** that lasts forever. HyperMemory remembers everything across conversations - user preferences, project details, decisions, and relationships between information.
+Persistent, cross-conversation memory for AI assistants. HyperMemory stores knowledge as a **hypergraph** — nodes, edges, and hyperedges — so your AI remembers facts, preferences, decisions, and relationships between them.
 
-## What is This?
-
-This repository shows you how to connect HyperMemory to your AI tools using **MCP (Model Context Protocol)** - a standard way for AI assistants to use external tools.
-
-**No coding required for most setups!**
-
-## Quick Links
-
-| Platform | Difficulty | Time to Setup |
-|----------|------------|---------------|
-| [Claude Desktop](#claude-desktop) | Easy | 5 minutes |
-| [OpenAI / ChatGPT](#openai--chatgpt) | Medium | 10 minutes |
-| [n8n](#n8n-workflow-automation) | Easy | 10 minutes |
-| [CrewAI](#crewai) | Advanced | 15 minutes |
-| [General MCP](#general-mcp-integration) | Varies | Varies |
+This repository contains setup guides, skill files, and API references for connecting HyperMemory to your AI tools via **MCP (Model Context Protocol)**, the **CLI**, or the **REST API**.
 
 ---
 
-## Before You Start
+## Quick Start
 
-### Step 1: Get Your API Key
+| Platform | Guide | Auth Method | Setup Time |
+|----------|-------|-------------|------------|
+| [Cursor IDE](cursor/) | MCP server | OAuth (automatic) | 2 min |
+| [Claude Desktop / Code](claude/) | MCP server | OAuth or API key | 5 min |
+| [CLI / Terminal Agents](cli/) | `hm` command | API key | 3 min |
+| [REST API](api/) | HTTP endpoints | API key or JWT | 5 min |
 
-1. Go to [hypermemory.io](https://hypermemory.io) and sign up (it's free to start)
-2. Click on **Dashboard** after logging in
-3. Click **Create API Key**
-4. Give it a name like "My AI Assistant"
-5. Copy the key - it looks like `hm_live_abc123...`
+### Step 1 — Get Credentials
 
-> ⚠️ **Keep your API key secret!** Don't share it or put it in public code.
+1. Sign up at [hypermemory.io](https://hypermemory.io) (free tier available)
+2. Go to [app.hypermemory.io/integration](https://app.hypermemory.io/integration)
+3. For **MCP clients** (Cursor, Claude): use OAuth — no key needed, login happens in-browser
+4. For **CLI or API**: create an API key — it starts with `hm_` followed by 64 hex characters
 
-### Step 2: Note Your Gateway URL
+### Step 2 — Connect
 
-Your HyperMemory gateway URL is:
-```
-https://api.hypermemory.io
-```
+Pick your platform from the table above and follow the guide.
 
-That's it! Now pick your platform below.
+### Step 3 — Install a Skill (optional but recommended)
+
+Drop a [skill file](skills/) into your AI tool to teach it **when** and **how** to use memory automatically on every message.
 
 ---
 
-## Claude Desktop
+## How It Works
 
-**Difficulty:** Easy | **Time:** 5 minutes
+HyperMemory exposes tools via MCP (Model Context Protocol) — an open standard for giving AI assistants access to external capabilities. Your AI calls tools like `hm_store` and `hm_recall` to read and write memory.
 
-Claude Desktop has built-in MCP support. Here's how to add HyperMemory:
+```
+AI Assistant  --->  MCP (Streamable HTTP)  --->  HyperMemory Server
+                    https://api.hypermemory.io/mcp
+```
 
-### Step-by-Step Instructions
+### Authentication
 
-1. **Find your Claude config file**
-   
-   - **Mac:** `~/Library/Application Support/Claude/claude_desktop_config.json`
-   - **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+| Method | Use Case | How |
+|--------|----------|-----|
+| **OAuth 2.1 + PKCE** | MCP clients (Cursor, Claude, Windsurf) | Browser popup, automatic token management |
+| **API Key** | CLI, REST API, server-to-server | `Authorization: Bearer hm_xxxx...` header |
 
-2. **Open the file** in any text editor (TextEdit, Notepad, VS Code, etc.)
+OAuth is the primary method for interactive MCP clients. The server implements the full OAuth 2.1 Authorization Code flow with PKCE, dynamic client registration (RFC 7591), and authorization server metadata (RFC 8414). Identity is provided by Supabase Auth.
 
-3. **Add this configuration** (replace `YOUR_API_KEY` with your actual key):
+API keys start with `hm_` and are created in the [dashboard](https://app.hypermemory.io/integration). They can be scoped to a specific graph.
+
+---
+
+## Data Model
+
+HyperMemory stores knowledge as a **hypergraph** with three primitives:
+
+### Nodes
+
+A node is a single piece of knowledge — a fact, person, decision, technology, preference, etc.
 
 ```json
 {
-  "mcpServers": {
-    "hypermemory": {
-      "command": "npx",
-      "args": [
-        "mcp-remote",
-        "https://api.hypermemory.io/v1/mcp/sse",
-        "--header",
-        "Authorization: Bearer YOUR_API_KEY"
-      ]
-    }
-  }
+  "key": "tech_redis",
+  "description": "Redis is used for rate limiting, session caching, and OAuth code storage",
+  "node_type": "technology",
+  "data": { "version": "7.x" }
 }
 ```
 
-4. **Save the file** and **restart Claude Desktop**
+Every node has a unique `key` (format: `{type}_{name}`), a human-readable `description`, and an optional `data` object for structured metadata. The server generates vector embeddings from the description for semantic search.
 
-5. **Test it!** Ask Claude: *"What's in my memory?"*
+### Edges (Binary Relationships)
 
-### Troubleshooting
-
-- **"Command not found"** - Make sure you have Node.js installed. Download it from [nodejs.org](https://nodejs.org)
-- **"Connection refused"** - Check that your API key is correct
-- **Claude doesn't see the tools** - Restart Claude Desktop completely
-
-📖 [Detailed Claude setup guide](./claude/README.md)
-
----
-
-## OpenAI / ChatGPT
-
-**Difficulty:** Medium | **Time:** 10 minutes
-
-OpenAI doesn't have native MCP support, but you can use HyperMemory through function calling or the Assistants API.
-
-### Option A: Using the Assistants API (Recommended)
-
-1. Go to [platform.openai.com/assistants](https://platform.openai.com/assistants)
-2. Create a new Assistant
-3. Enable **Functions** and add the HyperMemory tools
-4. Use our [function definitions](./openai/functions.json)
-
-### Option B: Using a Proxy Server
-
-Run a simple bridge that translates between OpenAI and MCP:
-
-```bash
-# Install the bridge
-npm install -g hypermemory-openai-bridge
-
-# Run it (replace with your keys)
-HYPERMEMORY_API_KEY=hm_live_xxx OPENAI_API_KEY=sk-xxx hypermemory-bridge
-```
-
-📖 [Detailed OpenAI setup guide](./openai/README.md)
-
----
-
-## n8n Workflow Automation
-
-**Difficulty:** Easy | **Time:** 10 minutes
-
-n8n is a visual workflow automation tool. You can add HyperMemory as a custom node.
-
-### Step-by-Step Instructions
-
-1. **Open n8n** and create a new workflow
-
-2. **Add an HTTP Request node** with these settings:
-   - **Method:** POST
-   - **URL:** `https://api.hypermemory.io/v1/mcp/sse`
-   - **Authentication:** Bearer Token
-   - **Token:** Your HyperMemory API key
-
-3. **Set the body** (JSON):
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "tools/call",
-  "params": {
-    "name": "memory_store",
-    "arguments": {
-      "key": "example",
-      "description": "This is a test memory"
-    }
-  }
-}
-```
-
-4. **Connect it** to your workflow and test!
-
-### Pre-built Workflows
-
-We've created ready-to-use workflows for common tasks:
-
-- [Store user data from forms](./n8n/workflows/store-form-data.json)
-- [Recall context for chatbots](./n8n/workflows/chatbot-context.json)
-- [Sync with CRM systems](./n8n/workflows/crm-sync.json)
-
-📖 [Detailed n8n setup guide](./n8n/README.md)
-
----
-
-## CrewAI
-
-**Difficulty:** Advanced | **Time:** 15 minutes
-
-CrewAI lets you create teams of AI agents. Add HyperMemory to give your crew shared memory.
-
-### Installation
-
-```bash
-pip install hypermemory-crewai
-```
-
-### Usage
-
-```python
-from crewai import Agent, Task, Crew
-from hypermemory_crewai import HyperMemoryTool
-
-# Create the memory tool
-memory = HyperMemoryTool(
-    api_key="hm_live_xxx",
-    gateway_url="https://api.hypermemory.io"
-)
-
-# Create an agent with memory
-researcher = Agent(
-    role="Research Assistant",
-    goal="Research topics and remember findings",
-    tools=[memory.store, memory.recall, memory.find_related],
-    verbose=True
-)
-
-# Create a task
-task = Task(
-    description="Research renewable energy trends and store key findings",
-    agent=researcher
-)
-
-# Run the crew
-crew = Crew(agents=[researcher], tasks=[task])
-result = crew.kickoff()
-```
-
-📖 [Detailed CrewAI setup guide](./crewai/README.md)
-
----
-
-## General MCP Integration
-
-**Difficulty:** Varies | **Time:** Varies
-
-If you're using a different platform or building your own integration, here's how MCP works with HyperMemory.
-
-### What is MCP?
-
-MCP (Model Context Protocol) is like a universal language for AI tools. It was created by Anthropic and lets AI assistants use external tools in a standard way.
-
-Think of it like USB - before USB, every device had different connectors. MCP does the same thing for AI tools.
-
-### How to Connect
-
-HyperMemory supports the **Streamable HTTP Transport**:
-
-- **Endpoint:** `https://api.hypermemory.io/v1/mcp/sse`
-- **Method:** POST
-- **Authentication:** Bearer token in the Authorization header
-- **Format:** JSON-RPC 2.0
-
-### Example Request
-
-```bash
-curl -X POST https://api.hypermemory.io/v1/mcp/sse \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer hm_live_xxx" \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": 1,
-    "method": "tools/call",
-    "params": {
-      "name": "memory_get_overview",
-      "arguments": {}
-    }
-  }'
-```
-
-📖 [Detailed MCP integration guide](./general/README.md)
-
----
-
-## Available Memory Tools
-
-HyperMemory provides these tools through MCP:
-
-| Tool | What it Does | When to Use |
-|------|--------------|-------------|
-| `memory_store` | Save new information | User shares facts, preferences, or decisions |
-| `memory_recall` | Search for information | Need context from past conversations |
-| `memory_update` | Change existing information | Information has changed |
-| `memory_forget` | Remove information | User asks to delete something |
-| `memory_get_overview` | See what's stored | Start of conversation, check memory status |
-| `memory_find_related` | Find connected info | Explore relationships between facts |
-| `memory_add_relationships` | Connect information | Link related facts together |
-
-### Tool Parameters
-
-<details>
-<summary><strong>memory_store</strong> - Save new information</summary>
+An edge connects exactly two nodes with a described relationship.
 
 ```json
 {
-  "key": "user_name",           // Unique identifier (required)
-  "description": "User's name is Alex",  // What this is (required)
-  "data": {                     // Extra details (optional)
-    "first_name": "Alex",
-    "last_name": "Smith"
-  },
-  "relationships": [            // Connect to other memories (optional)
-    {
-      "nodes": ["user_name", "user_profile"],
-      "relationship": "part_of"
-    }
-  ]
+  "to_key": "tech_qdrant",
+  "relationship": "search pipeline depends on Qdrant for vector similarity matching"
 }
 ```
-</details>
 
-<details>
-<summary><strong>memory_recall</strong> - Search for information</summary>
+Relationships should be descriptive sentences, not single words. The server auto-summarizes long labels.
+
+### Hyperedges (Group Relationships)
+
+A hyperedge connects **3 or more nodes** that participate in a single indivisible relationship — like a project team, a tech stack, or a system architecture.
 
 ```json
 {
-  "query": "user preferences",  // What to search for (required)
-  "max_results": 10,            // How many results (optional, default: 10)
-  "max_depth": 2                // How far to follow connections (optional)
+  "participant_keys": ["project_api", "tech_fastapi", "tech_redis", "tech_postgres"],
+  "relationship": "production API stack — all three are co-dependent"
 }
 ```
-</details>
 
-<details>
-<summary><strong>memory_update</strong> - Change existing information</summary>
+Use the removal test: if removing any single participant still leaves the relationship intact, use binary edges instead.
 
-```json
-{
-  "key": "user_name",           // Which memory to update (required)
-  "description": "User's name is Alexander",  // New description (optional)
-  "data": {                     // New data (optional)
-    "first_name": "Alexander"
-  }
-}
+### Node Types
+
 ```
-</details>
-
-<details>
-<summary><strong>memory_forget</strong> - Remove information</summary>
-
-```json
-{
-  "key": "old_preference",      // Which memory to delete (required)
-  "cascade": true               // Also remove connections (optional, default: true)
-}
+user  person  organization  component  event  decision  concept
+artifact  project  technology  preference  fact  skill
 ```
-</details>
+
+Plus system-level types: `location`, `group`, `product`, `asset`, `document`, `URL`.
+
+### Multiple Graphs
+
+Each account can have multiple isolated memory graphs. Pro plans get 4, Business gets 20, Enterprise is unlimited. Switch between them in the dashboard or via the `X-Graph-Id` header.
 
 ---
 
-## Pricing
+## MCP Tools
 
-| Plan | Price | Queries/Month | Best For |
-|------|-------|---------------|----------|
-| **Free** | $0 | 10,000 | Trying it out |
-| **Developer** | $29/mo | 50,000 | Personal projects |
-| **Pro** | $99/mo | 500,000 | Production apps |
-| **Enterprise** | Contact us | Unlimited | Large teams |
+HyperMemory exposes **11 public MCP tools**. These are available to any connected MCP client.
 
-A "query" = any memory operation (store, recall, update, delete)
+| Tool | Purpose | Key Parameters |
+|------|---------|----------------|
+| `hm_store` | Save a new memory node | `key`, `description`, `node_type`, `data?`, `relationships?` |
+| `hm_recall` | Search memory (hybrid: BM25 + vector + session) | `query`, `max_results?` (default 20) |
+| `hm_update` | Modify an existing node | `key`, `description?`, `data?`, `node_type?` |
+| `hm_forget` | Delete a node | `key`, `cascade?` (default true) |
+| `hm_get_overview` | Graph stats and top nodes | `include_top_nodes?` (default 10) |
+| `hm_find_related` | Traverse the graph from a seed node | `start_node`, `query?`, `max_nodes?`, `max_depth?` |
+| `hm_ingest` | Decompose dense text into entities and edges (LLM) | `text`, `context?` |
+| `hm_upload_file` | Upload a file to S3 with AI summary (Pro+) | `filename`, `content_base64`, `description?` |
+| `hm_list_files` | Query uploaded files | `file_type?`, `search?`, `limit?` |
+| `hm_timeline_write` | Write a diary entry to the timeline | `summary`, `meta?` |
+| `hm_timeline` | Search past timeline events | `query?`, `period?`, `node_key?`, `start?`, `end?` |
+
+### Search Pipeline
+
+`hm_recall` runs a parallel hybrid search:
+
+1. **Session cache** — recently accessed nodes, weighted by conversation phase
+2. **BM25** — full-text search on node descriptions
+3. **Vector** — semantic similarity via Qdrant embeddings
+4. **Edge BM25** — full-text search on relationship labels
+5. **Regex fallback** — pattern matching when other methods return nothing
+
+Results are scored, deduplicated, and ranked by a composite of session relevance, topical fit, and general importance.
+
+### Enrichment
+
+Stored nodes are asynchronously enriched by a background worker that:
+- Detects and creates relationships to existing nodes
+- Classifies node types against the ontology
+- Generates structured metadata
+- Links nodes into relevant hyperedges
 
 ---
 
-## Getting Help
+## Plans and Limits
 
-- **Documentation:** [docs.hypermemory.io](https://docs.hypermemory.io)
+| Plan | Price | Queries/mo | Graphs | File Storage |
+|------|-------|------------|--------|--------------|
+| **Free** | $0 | 2,000 | 1 | — |
+| **Basic** | $8/mo | 10,000 | 1 | — |
+| **Pro** | $15/mo | 200,000 | 4 | 1 GB |
+| **Business** | $50/mo | 500,000 | 20 | 100 GB |
+| **Enterprise** | Custom | Unlimited | Unlimited | 1 TB |
+
+Annual billing saves ~17%. All paid plans include all MCP tools. File upload requires Pro or higher.
+
+### Rate Limits
+
+| Plan | API requests/min | Write tools/min | Ingest tools/min | Read tools/min |
+|------|-----------------|-----------------|-------------------|----------------|
+| Free | 60 | 10 | 3 | 30 |
+| Basic | 120 | 20 | 5 | 60 |
+| Pro | 300 | 60 | 15 | 120 |
+| Business | 600 | 120 | 30 | 240 |
+| Enterprise | Unlimited | 300 | 60 | 600 |
+
+---
+
+## Skill Files
+
+Skill files teach your AI assistant **how** to use HyperMemory automatically. Drop one into your tool's configuration:
+
+| File | For | MCP Server Name |
+|------|-----|-----------------|
+| [skills/hypermemory.md](skills/hypermemory.md) | Generic MCP client | `hypermemory` |
+| [skills/cursor.md](skills/cursor.md) | Cursor IDE | `user-hypermemory` |
+| [skills/cli.md](skills/cli.md) | Terminal agents (OpenClaw, etc.) | N/A (uses `hm` CLI) |
+| [skills/chatgpt.txt](skills/chatgpt.txt) | ChatGPT custom instructions | N/A |
+
+---
+
+## Repository Structure
+
+```
+README.md           Overview, data model, tools, plans (this file)
+cursor/             Cursor IDE setup guide
+claude/             Claude Desktop & Claude Code setup guide
+cli/                CLI installation and command reference
+api/                REST API endpoint reference
+skills/             Drop-in skill files for AI tools
+LICENSE             MIT License
+```
+
+---
+
+## Support
+
 - **Issues:** [GitHub Issues](https://github.com/RunStack-AI/hypermemory-mcp/issues)
 - **Email:** support@hypermemory.io
-- **Discord:** [Join our community](https://discord.gg/hypermemory)
-
-## Contributing
-
-Found a bug? Have an idea? We'd love your help!
-
-1. Fork this repository
-2. Make your changes
-3. Submit a pull request
+- **Dashboard:** [app.hypermemory.io](https://app.hypermemory.io)
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT — see [LICENSE](LICENSE).
 
 ---
 
-Made with ❤️ by [RunStack AI](https://runstack.ai)
+Built by [RunStack AI](https://runstack.ai)

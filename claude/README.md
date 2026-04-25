@@ -1,57 +1,21 @@
-# HyperMemory + Claude Desktop
+# HyperMemory + Claude
 
-This guide walks you through setting up HyperMemory with Claude Desktop step by step.
+Setup guides for Claude Desktop and Claude Code.
 
-## What You'll Get
+---
 
-After setup, Claude will be able to:
-- ✅ Remember things you tell it across conversations
-- ✅ Recall information from past chats
-- ✅ Connect related pieces of information
-- ✅ Forget information when you ask
+## Claude Desktop
 
-## Requirements
+Claude Desktop supports MCP servers natively. HyperMemory connects via Streamable HTTP transport.
 
-- **Claude Desktop app** (download from [claude.ai/download](https://claude.ai/download))
-- **Node.js** installed (download from [nodejs.org](https://nodejs.org) - the LTS version is fine)
-- **A HyperMemory API key** (get one at [hypermemory.io](https://hypermemory.io))
+### Option A: OAuth (Recommended)
 
-## Step 1: Check Node.js is Installed
+Edit your Claude Desktop config file:
 
-Open Terminal (Mac) or Command Prompt (Windows) and type:
+- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
-```bash
-node --version
-```
-
-You should see something like `v18.17.0` or higher. If you get an error, [download Node.js first](https://nodejs.org).
-
-## Step 2: Find Your Claude Config File
-
-### On Mac
-
-1. Open Finder
-2. Press `Cmd + Shift + G` (Go to Folder)
-3. Paste this path: `~/Library/Application Support/Claude/`
-4. Look for `claude_desktop_config.json`
-
-If the file doesn't exist, create it.
-
-### On Windows
-
-1. Press `Win + R` (Run dialog)
-2. Paste this path: `%APPDATA%\Claude\`
-3. Look for `claude_desktop_config.json`
-
-If the file doesn't exist, create it.
-
-## Step 3: Edit the Config File
-
-Open `claude_desktop_config.json` in any text editor.
-
-### If the file is empty or doesn't exist
-
-Copy and paste this entire block (replace `YOUR_API_KEY` with your real key):
+Add the HyperMemory server:
 
 ```json
 {
@@ -60,23 +24,48 @@ Copy and paste this entire block (replace `YOUR_API_KEY` with your real key):
       "command": "npx",
       "args": [
         "mcp-remote",
-        "https://api.hypermemory.io/v1/mcp/sse",
-        "--header",
-        "Authorization: Bearer YOUR_API_KEY"
+        "https://api.hypermemory.io/mcp"
       ]
     }
   }
 }
 ```
 
-### If the file already has content
+On first use, a browser window opens for login via Supabase Auth. Tokens are cached and refreshed automatically by `mcp-remote`.
 
-Add the `hypermemory` section inside `mcpServers`. For example:
+**Prerequisite:** Node.js must be installed. Download from [nodejs.org](https://nodejs.org) if `npx` is not available.
+
+### Option B: API Key
+
+If you prefer using an API key:
+
+1. Create one at [app.hypermemory.io/integration](https://app.hypermemory.io/integration)
+2. Use the key in the config:
 
 ```json
 {
   "mcpServers": {
-    "some-other-tool": {
+    "hypermemory": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://api.hypermemory.io/mcp",
+        "--header",
+        "Authorization: Bearer hm_YOUR_API_KEY_HERE"
+      ]
+    }
+  }
+}
+```
+
+### Adding to an Existing Config
+
+If your config already has other MCP servers, add `hypermemory` alongside them:
+
+```json
+{
+  "mcpServers": {
+    "existing-server": {
       "command": "...",
       "args": ["..."]
     },
@@ -84,99 +73,92 @@ Add the `hypermemory` section inside `mcpServers`. For example:
       "command": "npx",
       "args": [
         "mcp-remote",
-        "https://api.hypermemory.io/v1/mcp/sse",
-        "--header",
-        "Authorization: Bearer YOUR_API_KEY"
+        "https://api.hypermemory.io/mcp"
       ]
     }
   }
 }
 ```
 
-## Step 4: Restart Claude
+After saving, **fully quit and restart Claude Desktop** (not just close the window).
 
-1. **Completely quit Claude** (not just close the window)
-   - Mac: Click Claude in the menu bar → Quit Claude
-   - Windows: Right-click Claude in system tray → Exit
+---
 
-2. **Open Claude Desktop again**
+## Claude Code (CLI)
 
-## Step 5: Test It Works
+Claude Code supports MCP servers via the `--mcp` flag or a config file.
 
-Ask Claude any of these:
+### Add the MCP server
 
-> "What's in my memory?"
+```bash
+claude mcp add hypermemory --transport http --url https://api.hypermemory.io/mcp
+```
 
-> "Remember that my favorite color is blue"
+Or with an API key:
 
-> "What do you remember about me?"
+```bash
+claude mcp add hypermemory --transport http --url https://api.hypermemory.io/mcp \
+  --header "Authorization: Bearer hm_YOUR_API_KEY_HERE"
+```
 
-If Claude responds with information about your memory, it's working! 🎉
+### Install the Skill File
+
+Copy [skills/hypermemory.md](../skills/hypermemory.md) to your project's `.claude/rules/` directory:
+
+```bash
+mkdir -p .claude/rules
+curl -o .claude/rules/hypermemory.md https://raw.githubusercontent.com/RunStack-AI/hypermemory-mcp/main/skills/hypermemory.md
+```
+
+Or add it as a global CLAUDE.md instruction.
+
+---
+
+## Verify Setup
+
+Ask Claude:
+
+> What's in my memory?
+
+You should see it call `hm_get_overview` and return your graph statistics (node count, types, top nodes).
 
 ## Troubleshooting
 
 ### "npx: command not found"
 
-Node.js isn't installed or isn't in your system PATH.
-
-**Fix:** 
-1. Download Node.js from [nodejs.org](https://nodejs.org)
-2. Run the installer
-3. Restart your computer
-4. Try again
+Node.js is not installed. Download it from [nodejs.org](https://nodejs.org) and restart your terminal.
 
 ### "Connection refused" or "Unauthorized"
 
-Your API key might be wrong.
+- Check your API key is correct and starts with `hm_`
+- Verify the URL is `https://api.hypermemory.io/mcp` (not `/v1/mcp/sse`)
+- Try creating a fresh API key at [app.hypermemory.io/integration](https://app.hypermemory.io/integration)
 
-**Fix:**
-1. Go to [hypermemory.io/dashboard](https://hypermemory.io/dashboard)
-2. Check your API key is correct
-3. Make sure there are no extra spaces around the key
+### Claude doesn't see the tools
 
-### Claude doesn't see any memory tools
+- Fully restart Claude Desktop (quit from the menu bar / system tray, then reopen)
+- Check the config file for JSON syntax errors — use [jsonlint.com](https://jsonlint.com) to validate
+- Ensure there are no curly quotes (" ") — only straight quotes (" ")
 
-The config file might have a syntax error.
+### OAuth login loop
 
-**Fix:**
-1. Make sure all quotes are straight quotes `"` not curly quotes `""`
-2. Check for missing commas between items
-3. Use a JSON validator like [jsonlint.com](https://jsonlint.com)
+- Clear the `mcp-remote` cache: `rm -rf ~/.mcp-auth`
+- Restart Claude Desktop and try again
 
-### "MCP server disconnected"
+## Available Tools
 
-This can happen if your network connection is unstable.
+Once connected, Claude has access to all 11 HyperMemory tools. See the [main README](../README.md) for the full tool reference.
 
-**Fix:**
-1. Check your internet connection
-2. Restart Claude Desktop
-3. Try again
-
-## Example Conversations
-
-Here are some things you can ask Claude to do with memory:
-
-### Save Information
-> "Remember that I'm working on a project called 'Solar Panel Dashboard' using Python and React"
-
-### Recall Information  
-> "What do you remember about my projects?"
-
-### Connect Information
-> "Link my 'Solar Panel Dashboard' project to my preference for React"
-
-### Update Information
-> "Update my Solar Panel project - we're now using Vue instead of React"
-
-### Delete Information
-> "Forget about the Solar Panel Dashboard project"
-
-## Next Steps
-
-- [Learn about memory key naming conventions](../general/naming-conventions.md)
-- [See all available memory tools](../general/tool-reference.md)
-- [Read the main documentation](../README.md)
-
----
-
-Need help? [Open an issue](https://github.com/RunStack-AI/hypermemory-mcp/issues) or email support@hypermemory.io
+| Tool | Purpose |
+|------|---------|
+| `hm_store` | Save a new memory node |
+| `hm_recall` | Search memory (hybrid search) |
+| `hm_update` | Modify an existing node |
+| `hm_forget` | Delete a node |
+| `hm_get_overview` | Graph stats and top nodes |
+| `hm_find_related` | Traverse the graph from a node |
+| `hm_ingest` | Decompose dense text into entities |
+| `hm_upload_file` | Upload a file with AI summary (Pro+) |
+| `hm_list_files` | Query uploaded files |
+| `hm_timeline_write` | Write a diary entry |
+| `hm_timeline` | Search timeline events |
